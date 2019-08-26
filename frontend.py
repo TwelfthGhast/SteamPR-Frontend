@@ -39,7 +39,7 @@ def calc_xp(level):
 def calc_lvl(xp):
     multi = 1
     level = 0
-    while (xp - multi * 1000) > 0:
+    while (xp - multi * 1000) >= 0:
         xp -= multi * 1000
         multi += 1
         level += 10
@@ -103,19 +103,26 @@ def generate_profile(steamid64):
             print(data_acc)
             app.logger.info('%s', data_acc)
             cur_epoch = time.time()
-            cur_xp = calc_xp(data_profile['level'])
-            xp = [cur_xp, cur_xp, cur_xp, cur_xp]
+
+            chart_data = '[0, 0]'
+            epochcount = 0
+            xpcount = 0
+            monthcount = 1
             for data_badge in data_profile['badges']:
-                if cur_epoch - data_badge['completed'] < 60 * 60 * 24 * 7:
-                    xp[0] -= data_badge['xp']
-                if cur_epoch - data_badge['completed'] < 60 * 60 * 24 * 30:
-                    xp[1] -= + data_badge['xp']
-                if cur_epoch - data_badge['completed'] < 60 * 60 * 24 * 60:
-                    xp[2] -= + data_badge['xp']
-                if cur_epoch - data_badge['completed'] < 60 * 60 * 24 * 180:
-                    xp[3] -= + data_badge['xp']
-            app.logger.info('XP: %s %s %s %s',  xp[0], xp[1], xp[2], xp[3])
-            levels = [calc_lvl(xp[0]), calc_lvl(xp[1]), calc_lvl(xp[2]), calc_lvl(xp[3])]
+                if epochcount == 0:
+                    epochcount = data_badge['completed']
+                if data_badge['completed'] >= epochcount + int(60 * 60 * 24 * 30.4375):
+                    chart_data += ", [" + str(monthcount) + ", " + str(calc_lvl(xpcount)) + "]"
+                    epochcount += int(60 * 60 * 24 * 30.4375)
+                    monthcount += 1
+                    while data_badge['completed'] >= epochcount + int(60 * 60 * 24 * 30.4375):
+                        chart_data += ", [" + str(monthcount) + ", " + str(calc_lvl(xpcount)) + "]"
+                        monthcount += 1
+                        epochcount += int(60 * 60 * 24 * 30.4375)
+                xpcount += data_badge['xp']
+            chart_data += ", [" + str(monthcount) + ", " + str(calc_lvl(xpcount)) + "]"
+            chart_data += "]"
+            print(chart_data)
             if 'timecreated' in data_acc['response']['players'][0]:
                 account_age = int((cur_epoch - data_acc['response']['players'][0]['timecreated']) * 100 / (60 * 60 * 24 * 365.25))
                 account_age = account_age / 100
@@ -124,7 +131,7 @@ def generate_profile(steamid64):
 
             ranking = requests.get(API_URL + "GetRank/" + str(steamid64))
             data_ranking = ranking.json()
-            return render_template('user.html', in_levels=levels, in_profile=data_profile, in_account=data_acc, in_age=account_age, in_rank=data_ranking)
+            return render_template('user.html', in_profile=data_profile, in_account=data_acc, in_age=account_age, in_rank=data_ranking, in_chart = chart_data)
     except ValueError:
         return render_template('404.html', error404=ERROR_404_COULD_NOT_RESOLVE), STATUS_NOT_FOUND
 
