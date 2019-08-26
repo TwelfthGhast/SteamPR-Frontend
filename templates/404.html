@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+<head>
+    {% include 'head.html' %}
+</head>
+<body>
+<div id="body-centre">
+    <h1> Uh Oh - An error occurred</h1>
+    <h3> Looks like something has gone wrong, probably due to the following error: </h3>
+    {% if error404 == 0 %}
+        <h4>Couldn't resolve the provided custom profile URL.</h4>
+    {% elif error404 == 1 %}
+        <h4>SteamID64 isn't currently in our database.</h4>
+    {% elif error404 == 2 %}
+        <h4>Page not found (404)</h4>
+    {% endif %}
+    {% include 'searchbar.html' %}
+</div>
+<div id="footer">{% include 'footer.html' %}</div>
+</body>
+</html>

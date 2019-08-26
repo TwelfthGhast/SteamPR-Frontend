@@ -1,0 +1,109 @@
+<!doctype html>
+<html>
+<head>
+    {% include 'head.html' %}
+</head>
+<body>
+<div id="text-body">
+    <div id="text-centre">
+        <div id="player_info">
+            <div style="text-align: center">{% include 'searchbar.html' %}</div>
+            <div id="player_image">
+                <img id="player_image_full" src="{{ in_account.response.players.0.avatarfull }}">
+            </div>
+            <table id="player_table">
+                <tr>
+                    <th>Name:</th>
+                    <td>{{ in_account.response.players.0.personaname }}</td>
+                </tr>
+                <tr>
+                    <th>SteamID64:</th>
+                    <td><a href="https://steamcommunity.com/profiles/{{ in_account.response.players.0.steamid }}">https://steamcommunity.com/profiles/{{ in_account.response.players.0.steamid }}/</a>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Profile URL:</th>
+                    <td>
+                        <a href="{{ in_account.response.players.0.profileurl }}">{{ in_account.response.players.0.profileurl }}</a>
+                    </td>
+                </tr>
+                {% if in_account.response.players.0.communityvisibilitystate != 3 %}
+                <tr>
+                    <th>Profile Status:</th>
+                    <td>PRIVATE</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <th>Account Age:</th>
+                    <td>{{ in_age }} years</td>
+                </tr>
+                <tr>
+                    <th>Steam Level:</th>
+                    <td>{{ in_profile.level }}</td>
+                </tr>
+                {% endif %}
+            </table>
+        </div>
+        {% if in_account.response.players.0.communityvisibilitystate == 3 %}
+        <table>
+            <tr>
+                <th> Steam Level 7 Days Ago</th>
+                <td> {{ in_levels[0] }} </td>
+            </tr>
+            <tr>
+                <th> Steam Level 30 Days Ago</th>
+                <td> {{ in_levels[1] }} </td>
+            </tr>
+            <tr>
+                <th> Steam Level 60 Days Ago</th>
+                <td> {{ in_levels[2] }} </td>
+            </tr>
+            <tr>
+                <th> Steam Level 180 Days Ago</th>
+                <td> {{ in_levels[3] }} </td>
+            </tr>
+        </table>
+        {% endif %}
+        <br>
+        <table>
+            <tr>
+                {% if in_account.response.players.0.communityvisibilitystate == 3 %}
+                <th> Steam Level</th>
+                {% else %}
+                <th> Assumed Steam Level </th>
+                {% endif %}
+                <td> {{ in_rank.playerlevel }} </td>
+            </tr>
+            <tr>
+                <th> Ranking for level {{ in_rank.playerlevel }} </th>
+                <td> {{ in_rank.ranklevel }} / {{ in_rank.samelevel }}</td>
+            </tr>
+            <tr>
+                <th> Ranked percentile across all accounts</th>
+                <td> In the top {{ in_rank.overallpercentile }}% </td>
+            </tr>
+        </table>
+        <!-- For some reason https://steamcommunity.com/id/minhvb1210/ or 76561198205078375 is returning a community state of 3 (public) despite being a private profile? -->
+        {% if in_account.response.players.0.communityvisibilitystate != 10 %}
+        <h3> Friends Search </h3>
+        <table>
+            <tr>
+                <th>Friend's SteamID64</th>
+                <th>Friends since:</th>
+            </tr>
+            {% for friend in in_profile.friends %}
+            <tr>
+                <td><a href="https://steamcommunity.com/profiles/{{ friend.steamid64 }}">{{ friend.steamid64 }}</a></td>
+                <td> {{ friend.since | convertepoch }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% endif %}
+    </div>
+    <p class="break"></p>
+    <p class="break"></p>
+    <p class="break"></p>
+</div>
+<div id="footer">{% include 'footer.html' %}</div>
+</body>
+</html>
