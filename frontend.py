@@ -16,7 +16,7 @@ cache = Cache(app)
 #https://steamcommunity.com/dev/apikey
 APIKEY = ""
 
-API_URL = "https://api.steampagerank.com/1.0/" #External
+API_URL = "https://api.steampagerank.com/1.0/"
 
 STATUS_PERMANENTLY_MOVED = 302
 STATUS_NOT_FOUND = 404
@@ -104,25 +104,24 @@ def generate_profile(steamid64):
             app.logger.info('%s', data_acc)
             cur_epoch = time.time()
 
-            chart_data = '[0, 0]'
-            epochcount = 0
+            epochcount = cur_epoch
             xpcount = 0
-            monthcount = 1
             for data_badge in data_profile['badges']:
-                if epochcount == 0:
-                    epochcount = data_badge['completed']
-                if data_badge['completed'] >= epochcount + int(60 * 60 * 24 * 30.4375):
-                    chart_data += ", [" + str(monthcount) + ", " + str(calc_lvl(xpcount)) + "]"
-                    epochcount += int(60 * 60 * 24 * 30.4375)
-                    monthcount += 1
-                    while data_badge['completed'] >= epochcount + int(60 * 60 * 24 * 30.4375):
-                        chart_data += ", [" + str(monthcount) + ", " + str(calc_lvl(xpcount)) + "]"
-                        monthcount += 1
-                        epochcount += int(60 * 60 * 24 * 30.4375)
                 xpcount += data_badge['xp']
+            chart_data = '[0, ' + str(calc_lvl(xpcount)) + ']'
+            monthcount = 0
+            for data_badge in data_profile['badges']:
+                if data_badge['completed'] <= epochcount + int(60 * 60 * 24 * 30.4375):
+                    chart_data += ", [" + str(monthcount) + ", " + str(calc_lvl(xpcount)) + "]"
+                    epochcount -= int(60 * 60 * 24 * 30.4375)
+                    monthcount -= 1
+                    while data_badge['completed'] <= epochcount + int(60 * 60 * 24 * 30.4375):
+                        chart_data += ", [" + str(monthcount) + ", " + str(calc_lvl(xpcount)) + "]"
+                        monthcount -= 1
+                        epochcount -= int(60 * 60 * 24 * 30.4375)
+                xpcount -= data_badge['xp']
             chart_data += ", [" + str(monthcount) + ", " + str(calc_lvl(xpcount)) + "]"
             chart_data += "]"
-            print(chart_data)
             if 'timecreated' in data_acc['response']['players'][0]:
                 account_age = int((cur_epoch - data_acc['response']['players'][0]['timecreated']) * 100 / (60 * 60 * 24 * 365.25))
                 account_age = account_age / 100
