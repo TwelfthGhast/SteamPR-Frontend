@@ -10,11 +10,19 @@
 
       function drawChart() {
 
-        var data = google.visualization.arrayToDataTable([['Month', 'Level'], {{ in_chart }});
+        var dataTable = new google.visualization.DataTable();
+        dataTable.addColumn('number', 'Year');
+        dataTable.addColumn('number', 'Sales');
+        // A column for custom tooltip content
+        dataTable.addColumn({type: 'string', role: 'tooltip'});
+        dataTable.addRows([
+            {{ in_chart | safe }}
+        ]);
+
 
         var options = {
           title: 'Steam Level Over Time',
-          //curveType: 'function',
+          tooltip: {isHtml: true},
           legend: 'none',
           hAxis: { title: 'Number of months in the past' },
           vAxis: { title: 'Steam Level' }
@@ -22,7 +30,7 @@
 
         var chart = new google.visualization.LineChart(document.getElementById('curve_chart'));
 
-        chart.draw(data, options);
+        chart.draw(dataTable, options);
       }
     </script>
 </head>

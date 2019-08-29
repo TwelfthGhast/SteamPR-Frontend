@@ -14,9 +14,10 @@ app.config.from_mapping(cacheconfig)
 cache = Cache(app)
 
 #https://steamcommunity.com/dev/apikey
-APIKEY = ""
+APIKEY = "DB2B9677C02FD6B7D5BF59CEAD3712F8"
 
-API_URL = "https://api.steampagerank.com/1.0/"
+#API_URL = "http://172.20.48.31/1.0/" #Internal
+API_URL = "https://api.steampagerank.com/1.0/" #External
 
 STATUS_PERMANENTLY_MOVED = 302
 STATUS_NOT_FOUND = 404
@@ -76,7 +77,7 @@ def render_404():
 @app.route('/ladder/')
 @cache.memoize(timeout=60*60*24*7)
 def ladder_page():
-    parameters = {"limit": 200}
+    parameters = {"limit": 200, "lvlmin": 50}
     rank_json = requests.get(API_URL + "GetList/", parameters)
     data_json = rank_json.json()
     return render_template('ladder.html', in_rank=data_json)
@@ -108,20 +109,26 @@ def generate_profile(steamid64):
             xpcount = 0
             for data_badge in data_profile['badges']:
                 xpcount += data_badge['xp']
-            chart_data = '[0, ' + str(calc_lvl(xpcount)) + ']'
+            chart_data = "[ 0, " + str(calc_lvl(xpcount)) + ", \"" + \
+                          data_acc['response']['players'][0]['personaname'] + \
+                          " was level " + str(calc_lvl(xpcount)) + " at " + time.strftime('%m/%Y', time.localtime(epochcount)) + "\"]"
             monthcount = 0
             for data_badge in data_profile['badges']:
                 if data_badge['completed'] <= epochcount + int(60 * 60 * 24 * 30.4375):
-                    chart_data += ", [" + str(monthcount) + ", " + str(calc_lvl(xpcount)) + "]"
+                    chart_data += ", [" + str(monthcount) + ", " + str(calc_lvl(xpcount)) + ", \"" +  data_acc['response']['players'][0]['personaname'] +\
+                                  " was level " + str(calc_lvl(xpcount)) + " at " + time.strftime('%m/%Y', time.localtime(epochcount)) +"\"]"
                     epochcount -= int(60 * 60 * 24 * 30.4375)
                     monthcount -= 1
                     while data_badge['completed'] <= epochcount + int(60 * 60 * 24 * 30.4375):
-                        chart_data += ", [" + str(monthcount) + ", " + str(calc_lvl(xpcount)) + "]"
+                        chart_data += ", [" + str(monthcount) + ", " + str(calc_lvl(xpcount)) + ", \"" + \
+                                      data_acc['response']['players'][0]['personaname'] + \
+                                      " was level " + str(calc_lvl(xpcount)) + " at " + time.strftime('%m/%Y', time.localtime(epochcount)) + "\"]"
                         monthcount -= 1
                         epochcount -= int(60 * 60 * 24 * 30.4375)
                 xpcount -= data_badge['xp']
-            chart_data += ", [" + str(monthcount) + ", " + str(calc_lvl(xpcount)) + "]"
-            chart_data += "]"
+            chart_data += ", [" + str(monthcount) + ", " + str(calc_lvl(xpcount)) + ", \"" + \
+                          data_acc['response']['players'][0]['personaname'] + \
+                          " was level " + str(calc_lvl(xpcount)) + " at " + time.strftime('%m/%Y', time.localtime(epochcount)) + "\"]"
             if 'timecreated' in data_acc['response']['players'][0]:
                 account_age = int((cur_epoch - data_acc['response']['players'][0]['timecreated']) * 100 / (60 * 60 * 24 * 365.25))
                 account_age = account_age / 100
@@ -155,7 +162,6 @@ def int_and_redirect():
 
 
 app.jinja_env.filters['convertepoch'] = epoch_readable
-
 
 if __name__ == '__main__':
     app.run()
