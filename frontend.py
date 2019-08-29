@@ -2,6 +2,7 @@ from flask import Flask, render_template, redirect, request
 from flask_caching import Cache
 import requests
 import time
+import config as cfg
 
 cacheconfig = {
     "DEBUG": True,          # some Flask specific configs
@@ -13,11 +14,8 @@ app = Flask(__name__)
 app.config.from_mapping(cacheconfig)
 cache = Cache(app)
 
-#https://steamcommunity.com/dev/apikey
-APIKEY = "DB2B9677C02FD6B7D5BF59CEAD3712F8"
-
-#API_URL = "http://172.20.48.31/1.0/" #Internal
-API_URL = "https://api.steampagerank.com/1.0/" #External
+APIKEY = cfg.apikey
+APIURL = cfg.apiurl
 
 STATUS_PERMANENTLY_MOVED = 302
 STATUS_NOT_FOUND = 404
@@ -78,7 +76,7 @@ def render_404():
 @cache.memoize(timeout=60*60*24*7)
 def ladder_page():
     parameters = {"limit": 200, "lvlmin": 50}
-    rank_json = requests.get(API_URL + "GetList/", parameters)
+    rank_json = requests.get(APIURL + "GetList/", parameters)
     data_json = rank_json.json()
     return render_template('ladder.html', in_rank=data_json)
 
@@ -91,7 +89,7 @@ def generate_profile(steamid64):
         steamid64 = int(steamid64)
         parameters_internal = {"steamid": steamid64}
         parameters_steam = {"key": APIKEY, "steamids": steamid64, "steamid": steamid64}
-        profile_json = requests.get(API_URL + "GetProfile/", params=parameters_internal)
+        profile_json = requests.get(APIURL + "GetProfile/", params=parameters_internal)
         data_profile = profile_json.json()
         # If not in database
         if "error" in data_profile:
@@ -135,7 +133,7 @@ def generate_profile(steamid64):
             else:
                 account_age = 0
 
-            ranking = requests.get(API_URL + "GetRank/" + str(steamid64))
+            ranking = requests.get(APIURL + "GetRank/" + str(steamid64))
             data_ranking = ranking.json()
             return render_template('user.html', in_profile=data_profile, in_account=data_acc, in_age=account_age, in_rank=data_ranking, in_chart = chart_data)
     except ValueError:
