@@ -3,6 +3,7 @@ from flask_caching import Cache
 import requests
 import time
 import config as cfg
+import locale #comma formatting for numbers
 
 cacheconfig = {
     "DEBUG": True,          # some Flask specific configs
@@ -13,6 +14,7 @@ cacheconfig = {
 app = Flask(__name__)
 app.config.from_mapping(cacheconfig)
 cache = Cache(app)
+locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
 
 APIKEY = cfg.apikey
 APIURL = cfg.apiurl
@@ -42,7 +44,7 @@ def calc_lvl(xp):
         xp -= multi * 1000
         multi += 1
         level += 10
-    while xp > 0:
+    while xp - multi * 100 >= 0:
         xp -= multi * 100
         level += 1
     return int(level)
@@ -56,11 +58,16 @@ def epoch_readable(epoch):
 def redirect_api():
     return redirect("https://api.steampagerank.com/", code=STATUS_PERMANENTLY_MOVED)
 
+@app.route('/12ghast/')
+def redirect_12ghast():
+    return redirect("https://www.12ghast.com/", code=STATUS_PERMANENTLY_MOVED)
 
 @app.route('/')
 @cache.memoize(timeout=60*60*24*7)
 def main_page():
-    return render_template('index.html')
+    num_track = requests.get(APIURL + "GetCount/")
+    data_num = num_track.json()
+    return render_template('index.html', in_accno=locale.format("%d", data_num['count'], grouping=True))
 
 
 @app.errorhandler(404)
@@ -81,6 +88,56 @@ def ladder_page():
     return render_template('ladder.html', in_rank=data_json)
 
 
+def render_user(data_badges, parameters_steam, steamid64, data_friends):
+    account = requests.get("https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/",
+                           params=parameters_steam)
+    data_acc = account.json()
+    app.logger.info('%s', data_acc)
+    cur_epoch = time.time()
+
+    epochcount = cur_epoch
+    xpcount = 0
+    if "badges" in data_badges:
+        for data_badge in data_badges['badges']:
+            xpcount += data_badge['xp']
+        chart_data = "[ 0, " + str(calc_lvl(xpcount)) + ", \"" + \
+                     data_acc['response']['players'][0]['personaname'] + \
+                     " was level " + str(calc_lvl(xpcount)) + " at " + time.strftime('%m/%Y',
+                                                                                     time.localtime(epochcount)) + "\"]"
+        monthcount = 0
+        for data_badge in data_badges['badges']:
+            if data_badge['completion_time'] <= epochcount + int(60 * 60 * 24 * 30.4375):
+                chart_data += ", [" + str(monthcount) + ", " + str(calc_lvl(xpcount)) + ", \"" + \
+                              data_acc['response']['players'][0]['personaname'] + \
+                              " was level " + str(calc_lvl(xpcount)) + " at " + time.strftime('%m/%Y', time.localtime(
+                    epochcount)) + "\"]"
+                epochcount -= int(60 * 60 * 24 * 30.4375)
+                monthcount -= 1
+                while data_badge['completion_time'] <= epochcount + int(60 * 60 * 24 * 30.4375):
+                    chart_data += ", [" + str(monthcount) + ", " + str(calc_lvl(xpcount)) + ", \"" + \
+                                  data_acc['response']['players'][0]['personaname'] + \
+                                  " was level " + str(calc_lvl(xpcount)) + " at " + time.strftime('%m/%Y', time.localtime(
+                        epochcount)) + "\"]"
+                    monthcount -= 1
+                    epochcount -= int(60 * 60 * 24 * 30.4375)
+            xpcount -= data_badge['xp']
+        chart_data += ", [" + str(monthcount) + ", " + str(calc_lvl(xpcount)) + ", \"" + \
+                      data_acc['response']['players'][0]['personaname'] + \
+                      " was level " + str(calc_lvl(xpcount)) + " at " + time.strftime('%m/%Y', time.localtime(epochcount)) + "\"]"
+    else:
+        chart_data = "[0, 0, \"" + data_acc['response']['players'][0]['personaname'] + " has a private profile.\"]"
+    if 'timecreated' in data_acc['response']['players'][0]:
+        account_age = int(
+            (cur_epoch - data_acc['response']['players'][0]['timecreated']) * 100 / (60 * 60 * 24 * 365.25))
+        account_age = account_age / 100
+    else:
+        account_age = 0
+    ranking = requests.get(APIURL + "GetRank/" + str(steamid64))
+    data_ranking = ranking.json()
+    return render_template('user.html', in_badges=data_badges, in_account=data_acc, in_age=account_age,
+                           in_rank=data_ranking, in_chart=chart_data, in_friends=data_friends)
+
+
 @app.route('/profiles/<steamid64>')
 # Cache results for 12 hours
 @cache.memoize(timeout=60*60*12)
@@ -93,49 +150,17 @@ def generate_profile(steamid64):
         data_profile = profile_json.json()
         # If not in database
         if "error" in data_profile:
-            return render_template('404.html', error404=ERROR_404_NOT_IN_DB), STATUS_NOT_FOUND
+            crawl_badges = requests.get("https://api.steampowered.com/IPlayerService/GetBadges/v1/", params=parameters_steam)
+            data_badges = crawl_badges.json()
+            crawl_friends = requests.get("https://api.steampowered.com/ISteamUser/GetFriendList/v1/", params=parameters_steam)
+            data_friends = crawl_friends.json()
+            if "friendslist" in data_friends:
+                return render_user(data_badges['response'], parameters_steam, steamid64, data_friends['friendslist'])
+            else:
+                return render_user(data_badges, parameters_steam, steamid64, data_friends)
         # If in database
         else:
-            account = requests.get("https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/",
-                                   params=parameters_steam)
-            data_acc = account.json()
-            print(data_acc)
-            app.logger.info('%s', data_acc)
-            cur_epoch = time.time()
-
-            epochcount = cur_epoch
-            xpcount = 0
-            for data_badge in data_profile['badges']:
-                xpcount += data_badge['xp']
-            chart_data = "[ 0, " + str(calc_lvl(xpcount)) + ", \"" + \
-                          data_acc['response']['players'][0]['personaname'] + \
-                          " was level " + str(calc_lvl(xpcount)) + " at " + time.strftime('%m/%Y', time.localtime(epochcount)) + "\"]"
-            monthcount = 0
-            for data_badge in data_profile['badges']:
-                if data_badge['completed'] <= epochcount + int(60 * 60 * 24 * 30.4375):
-                    chart_data += ", [" + str(monthcount) + ", " + str(calc_lvl(xpcount)) + ", \"" +  data_acc['response']['players'][0]['personaname'] +\
-                                  " was level " + str(calc_lvl(xpcount)) + " at " + time.strftime('%m/%Y', time.localtime(epochcount)) +"\"]"
-                    epochcount -= int(60 * 60 * 24 * 30.4375)
-                    monthcount -= 1
-                    while data_badge['completed'] <= epochcount + int(60 * 60 * 24 * 30.4375):
-                        chart_data += ", [" + str(monthcount) + ", " + str(calc_lvl(xpcount)) + ", \"" + \
-                                      data_acc['response']['players'][0]['personaname'] + \
-                                      " was level " + str(calc_lvl(xpcount)) + " at " + time.strftime('%m/%Y', time.localtime(epochcount)) + "\"]"
-                        monthcount -= 1
-                        epochcount -= int(60 * 60 * 24 * 30.4375)
-                xpcount -= data_badge['xp']
-            chart_data += ", [" + str(monthcount) + ", " + str(calc_lvl(xpcount)) + ", \"" + \
-                          data_acc['response']['players'][0]['personaname'] + \
-                          " was level " + str(calc_lvl(xpcount)) + " at " + time.strftime('%m/%Y', time.localtime(epochcount)) + "\"]"
-            if 'timecreated' in data_acc['response']['players'][0]:
-                account_age = int((cur_epoch - data_acc['response']['players'][0]['timecreated']) * 100 / (60 * 60 * 24 * 365.25))
-                account_age = account_age / 100
-            else:
-                account_age = 0
-
-            ranking = requests.get(APIURL + "GetRank/" + str(steamid64))
-            data_ranking = ranking.json()
-            return render_template('user.html', in_profile=data_profile, in_account=data_acc, in_age=account_age, in_rank=data_ranking, in_chart = chart_data)
+            return render_user(data_profile, parameters_steam, steamid64, data_profile)
     except ValueError:
         return render_template('404.html', error404=ERROR_404_COULD_NOT_RESOLVE), STATUS_NOT_FOUND
 

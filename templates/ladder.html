@@ -3,31 +3,34 @@
 <head>
     {% include 'head.html' %}
 </head>
-<body>
-<div id="text-body">
-    <div id="text-centre">
-        <h3> Top 200 players by PageRank weighting </h3>
-        <table>
-            <tr>
-                <th>Rank</th>
-                <th>SteamID64</th>
-                <th>Level</th>
-                <th>PageRank</th>
-            </tr>
-            {% for account in in_rank.response %}
-            <tr>
-                <td>{{ loop.index }}</td>
-                <td><a href="/profiles/{{ account.steamid64 }}">{{ account.steamid64 }}</a></td>
-                <td>{{ account.level }}</td>
-                <td>{{ account.weighting }}</td>
-            </tr>
-            {% endfor %}
-        </table>
-    </div>
-    <p class="break"></p>
-    <p class="break"></p>
-    <p class="break"></p>
+<body class="subpage">
+{%  include 'header.html' %}
+<section id="main" class="wrapper">
+<div class="inner">
+<div class="12u 12u$(medium)">
+<header class="align-center">
+    <h2>SteamPR Ladder</h2>
+    <p>Top 200 players by PageRank weighting</p>
+</header>
+<table>
+    <tr>
+        <th>Rank</th>
+        <th>SteamID64</th>
+        <th>Level</th>
+        <th>PageRank</th>
+    </tr>
+    {% for account in in_rank.response %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td><a href="/profiles/{{ account.steamid }}">{{ account.steamid }}</a></td>
+            <td>{{ account.level }}</td>
+            <td>{{ account.weighting }}</td>
+        </tr>
+    {% endfor %}
+</table>
 </div>
-<div id="footer">{% include 'footer.html' %}</div>
+</div>
+</section>
+{% include 'footer.html' %}
 </body>
 </html>
