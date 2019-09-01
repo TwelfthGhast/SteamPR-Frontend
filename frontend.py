@@ -105,6 +105,9 @@ def render_user(data_badges, parameters_steam, steamid64, data_friends):
                      " was level " + str(calc_lvl(xpcount)) + " at " + time.strftime('%m/%Y',
                                                                                      time.localtime(epochcount)) + "\"]"
         monthcount = 0
+        # Bug fix - if we are crawling from steam servers, no guarantee response will be in order of descending
+        # completion time so we will need to sort to get an accurate graph
+        data_badges['badges'] = sorted(data_badges['badges'], key = lambda i: i['completion_time'], reverse=True)
         for data_badge in data_badges['badges']:
             if data_badge['completion_time'] <= epochcount + int(60 * 60 * 24 * 30.4375):
                 chart_data += ", [" + str(monthcount) + ", " + str(calc_lvl(xpcount)) + ", \"" + \
