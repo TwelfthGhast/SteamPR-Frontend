@@ -1,7 +1,9 @@
 <!doctype html>
 <html>
 <head>
+    <title>SteamPR - {{ in_account.response.players.0.personaname }}</title>
     {% include 'head.html' %}
+    <meta name="description" content="Learn more about the account '{{ in_account.response.players.0.personaname }}' with SteamID64 of {{ in_account.response.players.0.steamid }}. Check level history, friends and more!">
     <!-- Google Charts -->
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <script type="text/javascript">
@@ -120,7 +122,11 @@
             {% for friend in in_friends.friends %}
                 <tr>
                     <td><a href="/profiles/{{ friend.steamid }}">{{ friend.steamid }}</a></td>
-                    <td> {{ friend.friend_since | convertepoch }}</td>
+                    {% if friend.friend_since != 0 %}
+                        <td> {{ friend.friend_since | convertepoch }}</td>
+                    {% else %}
+                        <td> Unknown</td>
+                    {% endif %}
                 </tr>
             {% endfor %}
             </table>
